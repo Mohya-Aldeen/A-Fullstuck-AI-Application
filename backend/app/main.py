@@ -2,7 +2,7 @@
 FastAPI application entrypoint.
 
 Run locally with:
-    uv run uvicorn app.main:app --reload
+    uvicorn app.main:app --reload
 """
 
 from fastapi import FastAPI
