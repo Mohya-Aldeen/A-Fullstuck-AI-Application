@@ -1,8 +1,19 @@
-"""Database package exports for app code.
+from app.database.base import Base
+from app.database.models import (  # noqa: F401 — register tables on Base.metadata
+    ChatMessage,
+    ChatThread,
+    DocumentChunk,
+    MessageCitation,
+    Profile,
+    SourceDocument,
+)
 
-Keep imports light — avoid creating engines/sessions at import time.
-"""
-
-from .base import Base
-
-__all__ = ["Base"]
+__all__ = [
+    "Base",
+    "ChatMessage",
+    "ChatThread",
+    "DocumentChunk",
+    "MessageCitation",
+    "Profile",
+    "SourceDocument",
+]

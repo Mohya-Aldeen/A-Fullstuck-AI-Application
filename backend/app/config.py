@@ -8,9 +8,7 @@ Import `settings` wherever config is needed:
     settings.OPENAI_API_KEY
 """
 
-from typing import List
-
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     # --- Supabase (Auth + API) ---
-    SUPABASE_URL: AnyHttpUrl
+    SUPABASE_URL: str
     SUPABASE_ANON_KEY: str
     SUPABASE_SERVICE_ROLE_KEY: str
 
@@ -36,15 +34,14 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_DIMENSIONS: int = 1536
 
     # --- Server ---
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:5173"]
+    # Comma-separated in .env (see .env.example). Stored as str so pydantic-settings
+    # does not try to JSON-decode the value before our split runs.
+    ALLOWED_ORIGINS: str = "http://localhost:5173"
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def split_origins(cls, v: str | List[str]) -> List[str]:
-        """ALLOWED_ORIGINS is a comma-separated string in .env."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    @computed_field
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
 
 
 # Instantiated once at import time — missing/invalid required vars raise

@@ -1,38 +1,40 @@
-from __future__ import with_statement
-
-import os
-import sys
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from alembic import context
-
-# Ensure project root is on path so app imports work
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# Import settings and metadata from the app
-try:
-    from app.config import settings
-    from app.database.base import Base
-except Exception as exc:  # pragma: no cover - fail fast at runtime with helpful message
-    raise RuntimeError(
-        "Failed importing application settings or metadata. Ensure backend/.env is populated before running migrations."
-    ) from exc
+from app.config import settings
+from app.database.base import Base
+from app.database import (  # noqa: F401 — register tables on Base.metadata
+    ChatMessage,
+    ChatThread,
+    DocumentChunk,
+    MessageCitation,
+    Profile,
+    SourceDocument,
+)
 
 config = context.config
 
-# Interpret the config file for Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
 
-def run_migrations_offline() -> None:
+def _database_url() -> str:
+    """Map Supabase postgresql:// URLs to psycopg2 for SQLAlchemy."""
     url = settings.DATABASE_URL
+    if url.startswith("postgresql+psycopg://"):
+        return url.replace("postgresql+psycopg://", "postgresql+psycopg2://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    return url
+
+
+def run_migrations_offline() -> None:
     context.configure(
-        url=url,
+        url=_database_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -43,7 +45,9 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    configuration = {"sqlalchemy.url": settings.DATABASE_URL}
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = _database_url()
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

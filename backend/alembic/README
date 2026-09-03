@@ -1,0 +1,9 @@
+Generic single-database configuration for Alembic.
+
+Run migrations from `backend/`:
+
+```powershell
+uv run alembic upgrade head
+```
+
+See `backend/README.md` for the full workflow.

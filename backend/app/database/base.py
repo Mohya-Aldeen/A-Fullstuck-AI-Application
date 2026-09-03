@@ -1,11 +1,5 @@
-"""SQLAlchemy base metadata for the application.
+from sqlalchemy.orm import DeclarativeBase
 
-Keep this file minimal — Alembic imports `Base.metadata` from here for
-autogenerate support.
-"""
 
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
-
-__all__ = ["Base"]
+class Base(DeclarativeBase):
+    pass
