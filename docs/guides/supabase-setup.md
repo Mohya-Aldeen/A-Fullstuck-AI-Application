@@ -40,11 +40,21 @@ Keep `service_role` out of git, client bundles, and frontend env files.
 
 ## 4. Auth settings (email only)
 
-This app uses email auth only — no Google/SSO.
+This app uses email + password only — no Google/SSO.
 
-1. Dashboard → **Authentication** → **Providers**.
-2. Leave **Email** enabled.
-3. For local dev, you may want **Authentication** → **Email** → disable "Confirm email" so sign-up works without inbox access (re-enable for production).
+1. Open the project dashboard → **Authentication** → **Sign In / Providers**.
+2. Leave **Email** enabled. Do **not** enable Google or other SSO providers.
+3. Expand **Email**:
+   - Keep **Email password** sign-in enabled.
+   - For local development, turn **Confirm email** **off**, then save. Sign-up will then create a session immediately (no inbox needed). Re-enable before production.
+4. **Authentication** → **URL Configuration**:
+   - **Site URL:** `http://localhost:5173`
+   - **Redirect URLs:** add `http://localhost:5173` and `http://localhost:5173/**`
+5. Copy the Project URL and `anon` `public` key into `frontend/.env` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The same URL + anon key, plus the `service_role` key, belong in `backend/.env`.
+
+If public sign-ups are disabled, create users under **Authentication** → **Users** → **Add user** with **Auto Confirm User** on, then sign in at `/sign-in`.
+
+After that: sign in → home page calls `GET /me` with the Supabase JWT. FastAPI should return the same user id and email.
 
 ## 5. Database schema management
 

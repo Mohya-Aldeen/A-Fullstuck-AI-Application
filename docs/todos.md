@@ -8,8 +8,8 @@ Reference docs: [client-brief.md](./client-brief.md) · [architecture.md](./arch
 
 ## Blockers / prerequisites
 
-- [ ] Create Supabase project (Auth + Postgres) — see [guides/supabase-setup.md](./guides/supabase-setup.md)
-- [ ] Copy `backend/.env.example` → `backend/.env` and fill in all values
+- [x] Create Supabase project (Auth + Postgres) — see [guides/supabase-setup.md](./guides/supabase-setup.md)
+- [x] Copy `backend/.env.example` → `backend/.env` and fill in all values
 - [ ] Get OpenAI API key and add to `backend/.env`
 - [ ] Download sample corpus: `uv run data/download.py` (Apple, Amazon, Alphabet, Microsoft, NVIDIA 10-Ks 2021–2025)
 - [ ] Confirm `data/downloads/` has filing payloads before starting ingestion
@@ -33,31 +33,31 @@ Already scaffolded; verify locally before moving on.
 
 Tables from [architecture.md § Data Model](./architecture.md#data-model). Alembic is the source of truth — do not edit tables in the Supabase dashboard.
 
-- [ ] SQLAlchemy models in `app/database/models.py`:
-  - [ ] `profiles`
-  - [ ] `chat_threads`
-  - [ ] `chat_messages`
-  - [ ] `message_citations`
-  - [ ] `source_documents`
-  - [ ] `document_chunks`
-- [ ] Initial Alembic migration (review autogenerate output):
-  - [ ] `create extension if not exists vector`
-  - [ ] `vector(1536)` embedding column on `document_chunks`
-  - [ ] generated `tsvector` column + GIN index for full-text search
-  - [ ] HNSW index on embeddings
-  - [ ] RLS enabled + policies (users see only their own chats)
-- [ ] `uv run alembic upgrade head` succeeds against Supabase direct connection
-- [ ] `app/database/supabase.py` — user-scoped and service-role client factories
+- [x] SQLAlchemy models in `app/database/models/`:
+  - [x] `profiles`
+  - [x] `chat_threads`
+  - [x] `chat_messages`
+  - [x] `message_citations`
+  - [x] `source_documents`
+  - [x] `document_chunks`
+- [x] Initial Alembic migration (review autogenerate output):
+  - [x] `create extension if not exists vector`
+  - [x] `vector(1536)` embedding column on `document_chunks`
+  - [x] generated `tsvector` column + GIN index for full-text search
+  - [x] HNSW index on embeddings
+  - [x] RLS enabled + policies (users see only their own chats)
+- [x] `uv run python -m alembic upgrade head` succeeds against Supabase
+- [x] `app/database/supabase.py` — user-scoped and service-role client factories
 - [ ] Typed query helpers: `app/database/chats.py`, `app/database/documents.py`
 
 ---
 
 ## Phase 3 — Auth (backend)
 
-- [ ] `app/auth/dependencies.py` — verify `Authorization: Bearer <token>` via Supabase Auth
-- [ ] `get_current_user` FastAPI dependency (user id + email from JWT)
-- [ ] Reject unauthenticated requests before any retrieval or LLM work (401)
-- [ ] Thread ownership checks — user cannot read another user's thread (403)
+- [x] `app/auth/dependencies.py` — verify `Authorization: Bearer <token>` via Supabase Auth
+- [x] `get_current_user` FastAPI dependency (user id + email from JWT)
+- [x] Reject unauthenticated requests before any retrieval or LLM work (401)
+- [x] Thread ownership checks — user cannot read another user's thread (403)
 
 ---
 
@@ -124,11 +124,14 @@ Trust contract from [client-brief.md § What "trust" means](./client-brief.md#wh
 
 ## Phase 8 — Frontend (after backend chat endpoint works)
 
-- [ ] Vite + React + TypeScript scaffold (`pnpm`, Tailwind, shadcn/ui, React Router)
-- [ ] `src/lib/env.ts` — validate `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-- [ ] `src/lib/supabase.ts` — browser Supabase client
-- [ ] `src/lib/http.ts` + `src/lib/api.ts` — fetch wrapper with bearer token injection
-- [ ] Email sign-in / sign-up pages (Driftwood email — no SSO)
+- [x] Vite + React + TypeScript scaffold (`pnpm`, Tailwind, shadcn/ui, React Router)
+- [x] `src/lib/env.ts` — validate `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- [x] `src/lib/supabase.ts` — browser Supabase client
+- [x] `src/lib/http.ts` + `src/lib/api.ts` — fetch wrapper with bearer token injection
+- [x] Email sign-in / sign-up pages (Driftwood email — no SSO)
+- [x] `GET /me` — authenticated identity check so the browser JWT can be verified against FastAPI
+- [ ] Verify in the browser: sign in → home shows user id/email from `GET /me` (token reached the backend)
+- [x] Unauthenticated `GET /me` returns 401
 - [ ] Chat page: thread list, message history, streaming input
 - [ ] Vercel AI SDK `useChat` pointed at `POST /chat/stream` with Supabase token
 - [ ] Citation UI — filing name, page, clickable source passage excerpt
