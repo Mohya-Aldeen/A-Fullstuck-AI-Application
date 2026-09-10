@@ -130,7 +130,7 @@ Trust contract from [client-brief.md § What "trust" means](./client-brief.md#wh
 - [x] `src/lib/http.ts` + `src/lib/api.ts` — fetch wrapper with bearer token injection
 - [x] Email sign-in / sign-up pages (Driftwood email — no SSO)
 - [x] `GET /me` — authenticated identity check so the browser JWT can be verified against FastAPI
-- [ ] Verify in the browser: sign in → home shows user id/email from `GET /me` (token reached the backend)
+- [x] Verify in the browser: sign in → home shows user id/email from `GET /me` (token reached the backend)
 - [x] Unauthenticated `GET /me` returns 401
 - [ ] Chat page: thread list, message history, streaming input
 - [ ] Vercel AI SDK `useChat` pointed at `POST /chat/stream` with Supabase token
