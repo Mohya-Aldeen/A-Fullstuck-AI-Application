@@ -9,11 +9,13 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.chat import router as chat_router
 from app.api.me import router as me_router
 from app.config import settings
 
 app = FastAPI(title="Document Copilot")
 app.include_router(me_router)
+app.include_router(chat_router)
 
 app.add_middleware(
     CORSMiddleware,

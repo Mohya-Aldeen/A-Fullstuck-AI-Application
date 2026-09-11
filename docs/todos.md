@@ -48,7 +48,8 @@ Tables from [architecture.md § Data Model](./architecture.md#data-model). Alemb
   - [x] RLS enabled + policies (users see only their own chats)
 - [x] `uv run python -m alembic upgrade head` succeeds against Supabase
 - [x] `app/database/supabase.py` — user-scoped and service-role client factories
-- [ ] Typed query helpers: `app/database/chats.py`, `app/database/documents.py`
+- [x] Typed query helpers: `app/database/chats.py`
+- [ ] Typed query helpers: `app/database/documents.py`
 
 ---
 
@@ -108,16 +109,16 @@ Trust contract from [client-brief.md § What "trust" means](./client-brief.md#wh
 
 ## Phase 7 — Chat API & streaming
 
-- [ ] `chat/messages.py` — AI SDK UI message format ↔ internal types
-- [ ] `chat/orchestrator.py` — one turn: retrieve → agent → validate → persist
-- [ ] `chat/streaming.py` — AI SDK-compatible streaming events (text deltas + citation parts)
-- [ ] `api/chat.py` routes:
-  - [ ] `GET /chat/threads` — list user's threads
-  - [ ] `POST /chat/threads` — create thread
-  - [ ] `GET /chat/threads/{id}/messages` — message history
-  - [ ] `POST /chat/stream` — streaming assistant turn
-- [ ] Persist user message, assistant message, citations, usage metadata after successful run
-- [ ] Error responses: 401, 403, 404, 422, 502 per architecture spec
+- [x] `chat/messages.py` — AI SDK UI message format ↔ internal types
+- [x] `chat/orchestrator.py` — stub turn (stream + persist; retrieve → agent → validate later)
+- [x] `chat/streaming.py` — AI SDK-compatible streaming events (text deltas; citation parts later)
+- [x] `api/chat.py` routes:
+  - [x] `GET /chat/threads` — list user's threads
+  - [x] `POST /chat/threads` — create thread
+  - [x] `GET /chat/threads/{id}/messages` — message history
+  - [x] `POST /chat/stream` — streaming assistant turn (stub reply until Phase 6)
+- [x] Persist user message + assistant message after successful stub run (citations + usage later)
+- [x] Error responses: 401, 403, 404, 422, 502 per architecture spec
 - [ ] Integration test (marked `@pytest.mark.integration`) against live Supabase + OpenAI
 
 ---
@@ -132,11 +133,11 @@ Trust contract from [client-brief.md § What "trust" means](./client-brief.md#wh
 - [x] `GET /me` — authenticated identity check so the browser JWT can be verified against FastAPI
 - [x] Verify in the browser: sign in → home shows user id/email from `GET /me` (token reached the backend)
 - [x] Unauthenticated `GET /me` returns 401
-- [ ] Chat page: thread list, message history, streaming input
-- [ ] Vercel AI SDK `useChat` pointed at `POST /chat/stream` with Supabase token
-- [ ] Citation UI — filing name, page, clickable source passage excerpt
-- [ ] Empty states, streaming status, friendly error messages (network vs HTTP)
-- [ ] `pnpm tsc --noEmit` + `pnpm lint` clean
+- [x] Chat page: thread list, message history, streaming input
+- [x] Vercel AI SDK `useChat` pointed at `POST /chat/stream` with Supabase token
+- [x] Citation UI — filing name, page, clickable source passage excerpt (excerpt + page for now; filing name when backend adds chunk metadata)
+- [x] Empty states, streaming status, friendly error messages (network vs HTTP)
+- [x] `pnpm tsc --noEmit` + `pnpm lint` clean
 
 ---
 
