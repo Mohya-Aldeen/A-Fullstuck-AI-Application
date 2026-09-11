@@ -80,10 +80,13 @@ def _message_response(record: chat_db.ChatMessageRecord) -> MessageResponse:
     )
 
 
-def _database_unavailable() -> HTTPException:
+def _database_unavailable(exc: Exception) -> HTTPException:
+    detail = "Supabase database is unavailable"
+    if isinstance(exc, APIError) and exc.message:
+        detail = f"{detail}: {exc.message}"
     return HTTPException(
         status_code=status.HTTP_502_BAD_GATEWAY,
-        detail="Supabase database is unavailable",
+        detail=detail,
     )
 
 
@@ -95,7 +98,7 @@ async def list_threads(
     try:
         threads = await chat_db.list_threads(client)
     except (APIError, httpx.RequestError) as exc:
-        raise _database_unavailable() from exc
+        raise _database_unavailable(exc) from exc
     return [_thread_response(thread) for thread in threads if thread.user_id == user.id]
 
 
@@ -113,7 +116,7 @@ async def create_thread(
             title=body.title,
         )
     except (APIError, httpx.RequestError) as exc:
-        raise _database_unavailable() from exc
+        raise _database_unavailable(exc) from exc
     return _thread_response(thread)
 
 
@@ -126,7 +129,7 @@ async def list_thread_messages(
     try:
         thread = await chat_db.get_thread(client, thread_id)
     except (APIError, httpx.RequestError) as exc:
-        raise _database_unavailable() from exc
+        raise _database_unavailable(exc) from exc
 
     if thread is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
@@ -135,7 +138,7 @@ async def list_thread_messages(
     try:
         messages = await chat_db.list_messages(client, thread_id)
     except (APIError, httpx.RequestError) as exc:
-        raise _database_unavailable() from exc
+        raise _database_unavailable(exc) from exc
 
     return [_message_response(message) for message in messages]
 
@@ -149,14 +152,14 @@ async def stream_chat(
     try:
         context = await prepare_turn(user=user, client=client, body=body)
     except (APIError, httpx.RequestError) as exc:
-        raise _database_unavailable() from exc
+        raise _database_unavailable(exc) from exc
 
     async def event_stream():
         try:
             async for event in run_turn(context, client):
                 yield event
         except (APIError, httpx.RequestError) as exc:
-            raise _database_unavailable() from exc
+            raise _database_unavailable(exc) from exc
 
     return StreamingResponse(
         event_stream(),

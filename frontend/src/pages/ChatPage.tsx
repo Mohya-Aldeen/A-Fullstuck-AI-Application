@@ -47,6 +47,7 @@ export function ChatPage() {
       navigate(`/chat/${thread.id}`)
     } catch (error) {
       setThreadsError(formatApiError(error))
+      await refreshThreads()
     } finally {
       setCreatingThread(false)
     }

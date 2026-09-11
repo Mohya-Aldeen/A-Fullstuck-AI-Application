@@ -8,6 +8,8 @@ from uuid import UUID, uuid4
 
 from supabase import AsyncClient
 
+from app.database.supabase import create_service_role_client
+
 _THREADS = "chat_threads"
 _MESSAGES = "chat_messages"
 _CITATIONS = "message_citations"
@@ -48,6 +50,12 @@ def _parse_dt(value: str) -> datetime:
     return datetime.fromisoformat(value)
 
 
+def _one_row(rows: list[dict] | None, *, what: str) -> dict:
+    if not rows:
+        raise RuntimeError(f"Expected one {what} row from Supabase, got none")
+    return rows[0]
+
+
 def _thread_from_row(row: dict) -> ChatThreadRecord:
     return ChatThreadRecord(
         id=UUID(row["id"]),
@@ -84,13 +92,13 @@ def _message_from_row(row: dict) -> ChatMessageRecord:
     )
 
 
-async def ensure_profile(
-    client: AsyncClient,
-    *,
-    user_id: UUID,
-    email: str | None,
-) -> None:
-    """Create a profile row when missing — required before inserting chat_threads."""
+async def ensure_profile(*, user_id: UUID, email: str | None) -> None:
+    """Ensure a profile row exists — chat_threads FK requires it.
+
+    Uses the service-role client because profile bootstrap runs before the user's
+    first thread insert and upsert via the user JWT is unreliable under RLS.
+    """
+    client = await create_service_role_client()
     await (
         client.table(_PROFILES)
         .upsert({"id": str(user_id), "email": email}, on_conflict="id")
@@ -115,15 +123,15 @@ async def create_thread(
     email: str | None,
     title: str = "New chat",
 ) -> ChatThreadRecord:
-    await ensure_profile(client, user_id=user_id, email=email)
+    await ensure_profile(user_id=user_id, email=email)
+    thread_id = uuid4()
     response = await (
         client.table(_THREADS)
-        .insert({"user_id": str(user_id), "title": title})
+        .insert({"id": str(thread_id), "user_id": str(user_id), "title": title})
         .select("id,user_id,title,created_at,updated_at")
-        .single()
         .execute()
     )
-    return _thread_from_row(response.data)
+    return _thread_from_row(_one_row(response.data, what="chat thread"))
 
 
 async def get_thread(client: AsyncClient, thread_id: UUID) -> ChatThreadRecord | None:
@@ -134,7 +142,7 @@ async def get_thread(client: AsyncClient, thread_id: UUID) -> ChatThreadRecord |
         .maybe_single()
         .execute()
     )
-    if response.data is None:
+    if response is None or response.data is None:
         return None
     return _thread_from_row(response.data)
 
@@ -153,10 +161,9 @@ async def update_thread(
         .update(payload)
         .eq("id", str(thread_id))
         .select("id,user_id,title,created_at,updated_at")
-        .single()
         .execute()
     )
-    return _thread_from_row(response.data)
+    return _thread_from_row(_one_row(response.data, what="chat thread"))
 
 
 async def list_messages(client: AsyncClient, thread_id: UUID) -> list[ChatMessageRecord]:
@@ -195,22 +202,21 @@ async def append_message(
     message_id: UUID | None = None,
 ) -> ChatMessageRecord:
     row: dict = {
+        "id": str(message_id or uuid4()),
         "thread_id": str(thread_id),
         "role": role,
         "ui_message": ui_message,
         "sequence": sequence,
     }
-    if message_id is not None:
-        row["id"] = str(message_id)
 
     response = await (
         client.table(_MESSAGES)
         .insert(row)
         .select("id,thread_id,role,ui_message,sequence,created_at")
-        .single()
         .execute()
     )
-    return _message_from_row({**response.data, "message_citations": []})
+    inserted = _one_row(response.data, what="chat message")
+    return _message_from_row({**inserted, "message_citations": []})
 
 
 @dataclass(frozen=True)

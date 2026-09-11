@@ -6,6 +6,22 @@ Reference docs: [client-brief.md](./client-brief.md) · [architecture.md](./arch
 
 ---
 
+## Current status (local dev)
+
+**Working end-to-end (stub assistant):** sign in → create thread → send message → stream stub reply → messages persist in Supabase.
+
+| Layer | Done | Not yet |
+| ----- | ---- | ------- |
+| **Backend** | `/health`, `/me`, full chat API (`/chat/threads`, `/chat/stream`), auth + RLS, `chats.py` helpers | Ingestion, retrieval, real agent, citations in stream, integration tests |
+| **Frontend** | Auth, chat UI, `useChat` → FastAPI, thread list, streaming, error states | Filing name in citation UI (needs chunk metadata from backend) |
+| **Data** | Schema migrated to Supabase | No SEC filings ingested — corpus empty |
+
+**Next recommended phase:** Phase 4 (ingestion) — requires OpenAI key + downloaded 10-K corpus. Until then, answers stay stub text.
+
+**Verified locally:** `uv run pytest tests/chat` (7 unit tests) · `pnpm tsc --noEmit` · `pnpm lint` (warnings only).
+
+---
+
 ## Blockers / prerequisites
 
 - [x] Create Supabase project (Auth + Postgres) — see [guides/supabase-setup.md](./guides/supabase-setup.md)
@@ -25,7 +41,8 @@ Already scaffolded; verify locally before moving on.
 - [x] SQLAlchemy `Base` in `app/database/base.py`
 - [x] `uv sync` + `uv run uvicorn app.main:app --reload` runs cleanly
 - [ ] `structlog` wired for structured request/error logging
-- [ ] pytest layout under `backend/tests/` with `@pytest.mark.integration` convention
+- [x] pytest layout under `backend/tests/` (chat unit tests in `tests/chat/`)
+- [ ] `@pytest.mark.integration` convention + live Supabase/OpenAI integration tests
 
 ---
 
@@ -48,7 +65,7 @@ Tables from [architecture.md § Data Model](./architecture.md#data-model). Alemb
   - [x] RLS enabled + policies (users see only their own chats)
 - [x] `uv run python -m alembic upgrade head` succeeds against Supabase
 - [x] `app/database/supabase.py` — user-scoped and service-role client factories
-- [x] Typed query helpers: `app/database/chats.py`
+- [x] Typed query helpers: `app/database/chats.py` (explicit UUIDs on insert; service-role profile bootstrap)
 - [ ] Typed query helpers: `app/database/documents.py`
 
 ---
@@ -131,9 +148,11 @@ Trust contract from [client-brief.md § What "trust" means](./client-brief.md#wh
 - [x] `src/lib/http.ts` + `src/lib/api.ts` — fetch wrapper with bearer token injection
 - [x] Email sign-in / sign-up pages (Driftwood email — no SSO)
 - [x] `GET /me` — authenticated identity check so the browser JWT can be verified against FastAPI
-- [x] Verify in the browser: sign in → home shows user id/email from `GET /me` (token reached the backend)
+- [x] Verify in the browser: sign in → `GET /me` returns user id/email (token reached the backend)
 - [x] Unauthenticated `GET /me` returns 401
+- [x] `/` and `/chat/:threadId` — chat app (legacy `HomePage.tsx` unused)
 - [x] Chat page: thread list, message history, streaming input
+- [x] Verify in the browser: New chat → send message → stub stream → reload shows history
 - [x] Vercel AI SDK `useChat` pointed at `POST /chat/stream` with Supabase token
 - [x] Citation UI — filing name, page, clickable source passage excerpt (excerpt + page for now; filing name when backend adds chunk metadata)
 - [x] Empty states, streaming status, friendly error messages (network vs HTTP)
