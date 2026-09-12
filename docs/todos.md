@@ -81,29 +81,41 @@ Tables from [architecture.md § Data Model](./architecture.md#data-model). Alemb
 
 ## Phase 4 — Ingestion pipeline
 
-One-off scripts under `backend/ingest/`. Goal: normalized Markdown + chunked + embedded corpus in Supabase.
+One-off **batch scripts** under `backend/ingest/` (not the chat agent). Goal: normalized Markdown → chunks → embeddings → Supabase.
 
-- [ ] SEC filing download script verified (`data/download.py`) — 10-Ks for AAPL, AMZN, GOOGL, MSFT, NVDA (2021–2025)
-- [ ] HTML → normalized Markdown extraction (preserve page/section metadata)
+**Sample corpus (fixed scope):** 5 companies × 5 fiscal years = **25 ten-Ks** — AAPL, AMZN, GOOGL, MSFT, NVDA (2021–2025). `data/download.py` already targets this (`TICKERS` × `FILINGS_PER_COMPANY`).
+
+**CLI shape:** one entry point is enough, e.g. `uv run python -m ingest.load_corpus` (or a small `ingest/run.py` that calls parse → chunk → embed → write). Separate modules are fine; you do not need multiple manual steps every time.
+
+**Full-text search (`search_vector`):** do **not** populate in ingest. Alembic defines `search_vector` as `GENERATED ALWAYS AS (to_tsvector('english', text)) STORED` — writing chunk `text` is enough; Postgres fills the tsvector for hybrid search in Phase 5.
+
+- [ ] Verify SEC download: `uv run data/download.py` → `data/downloads/` + `manifest.json` (25 filings)
+- [ ] HTML → Markdown: `uv run data/convert_to_markdown.py` → `data/markdown/` + `manifest.json` (Docling; same year layout)
+- [ ] Ingestion reads `data/markdown/` (preserve page/section metadata from Docling output where available)
 - [ ] Chunking strategy (size + overlap; store chunk index, page, section, ticker, filing type, year, accession number)
 - [ ] OpenAI embedding generation (`text-embedding-3-small`, 1536 dims)
-- [ ] Write `source_documents` + `document_chunks` (+ embeddings + tsvector) to Supabase
-- [ ] Idempotent re-run (skip or upsert already-ingested filings)
-- [ ] Spot-check: query a known passage (e.g. Apple revenue mix) returns expected chunks
+- [ ] Write `source_documents` + `document_chunks` (text + embedding; `search_vector` auto-generated)
+- [ ] Idempotent re-run (skip or upsert by accession number)
+- [ ] **Spot-check gate (required before Phase 5):** confirm chunks exist in Supabase and a known passage retrieves correctly — e.g. Apple revenue mix / segment table language from Q1 in [client-brief.md](./client-brief.md)
 - [ ] Unit tests for chunking and metadata extraction
 
 ---
 
 ## Phase 5 — Retrieval
 
+**Goal:** a user question returns ranked, relevant source passages.
+
 Hybrid search per [architecture.md § Retrieval Strategy](./architecture.md#retrieval-strategy).
 
-- [ ] `retrieval/queries.py` — pgvector semantic search over `document_chunks.embedding`
-- [ ] `retrieval/queries.py` — Postgres full-text search over `document_chunks.search_vector`
-- [ ] `retrieval/fusion.py` — Reciprocal Rank Fusion in Python
-- [ ] `retrieval/retriever.py` — query → ranked `SourcePassage` list (+ neighbor chunks for context)
-- [ ] Agent tools: `search_filings`, `read_chunk`, `read_surrounding_chunks`
-- [ ] Unit tests for RRF fusion and retriever ranking
+- [x] `retrieval/queries.py` — pgvector semantic search over `document_chunks.embedding`
+- [x] `retrieval/queries.py` — Postgres full-text search over `document_chunks.search_vector`
+- [x] `retrieval/fusion.py` — Reciprocal Rank Fusion in Python
+- [x] `retrieval/retriever.py` — query → ranked passage list (+ neighbor chunks for context); use a minimal retrieval type here or import `SourcePassage` once Phase 6 models land
+- [x] Agent tools: `search_filings`, `read_chunk`, `read_surrounding_chunks` (thin wrappers over the retriever)
+- [x] Unit tests: RRF fusion ranking
+- [x] Unit tests: query assembly with mocked DB (no network)
+- [x] Integration test (`@pytest.mark.integration`, optional): real hybrid query against ingested corpus
+- [x] **Retrieval gate (required before Phase 6):** 2–3 scripted or manual queries from [client-brief.md](./client-brief.md) return relevant chunks (e.g. Apple revenue mix, AWS profitability language)
 
 ---
 

@@ -32,8 +32,13 @@ async def create_user_client(access_token: str) -> AsyncClient:
 
 async def create_service_role_client() -> AsyncClient:
     """Privileged client for writes that cannot use the user JWT."""
-    return await create_async_client(
+    client = await create_async_client(
         settings.SUPABASE_URL,
         settings.SUPABASE_SERVICE_ROLE_KEY,
         options=_options(access_token=settings.SUPABASE_SERVICE_ROLE_KEY),
     )
+    if settings.SUPABASE_SERVICE_ROLE_KEY.startswith("sb_secret_"):
+        # New Supabase secret keys authenticate through `apikey`; unlike legacy
+        # JWT keys, they must not also be sent as a bearer token.
+        client.options.headers.pop("Authorization", None)
+    return client

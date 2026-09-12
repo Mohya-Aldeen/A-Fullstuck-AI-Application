@@ -8,6 +8,8 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "alembic==1.19.1",
+    "docling==2.125.0",
+    "docling-core[chunking-openai]==2.94.1",
     "fastapi[standard]==0.141.1",
     "httpx==0.28.1",
     "openai==3.3.0",
@@ -23,7 +25,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["app"]
+packages = ["app", "ingest"]
 
 [tool.uv]
 add-bounds = "exact"
@@ -34,4 +36,9 @@ dev = [
     "ipykernel==7.3.0",
     "pytest==9.1.1",
     "ruff==0.16.3",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that require local corpus files or live services",
 ]

@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_DIMENSIONS: int = 1536
+    # Docling HybridChunker token budget (aligned to OpenAI embedding tokenizer).
+    INGEST_CHUNK_MAX_TOKENS: int = 512
 
     # --- Server ---
     # Comma-separated in .env (see .env.example). Stored as str so pydantic-settings
