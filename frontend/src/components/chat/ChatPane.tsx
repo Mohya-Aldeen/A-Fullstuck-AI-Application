@@ -1,12 +1,12 @@
 import { useChat } from '@ai-sdk/react'
 import type { UIMessage } from 'ai'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { ChatInput } from '@/components/chat/ChatInput'
-import { ChatStatusBar } from '@/components/chat/ChatStatusBar'
-import { EmptyState } from '@/components/chat/EmptyState'
+import { Composer } from '@/components/chat/Composer'
+import { EvidencePanel } from '@/components/chat/EvidencePanel'
 import { MessageList } from '@/components/chat/MessageList'
-import { SourcePassagePanel } from '@/components/chat/SourcePassagePanel'
+import { ResearchStart } from '@/components/chat/ResearchStart'
+import { RetrievalStatus } from '@/components/chat/RetrievalStatus'
 import type { Citation } from '@/lib/chat'
 import { buildCitationsByMessageId, chatApi } from '@/lib/chat'
 import { createChatTransport } from '@/lib/chat-transport'
@@ -17,6 +17,8 @@ type ChatPaneProps = {
   threadTitle: string
   initialMessages: UIMessage[]
   initialCitations: Map<string, Citation[]>
+  pendingPrompt?: string | null
+  onPromptConsumed?: () => void
   onThreadActivity?: () => void
 }
 
@@ -25,12 +27,15 @@ export function ChatPane({
   threadTitle,
   initialMessages,
   initialCitations,
+  pendingPrompt,
+  onPromptConsumed,
   onThreadActivity,
 }: ChatPaneProps) {
   const transport = useMemo(() => createChatTransport(), [])
   const [citationsByMessageId, setCitationsByMessageId] =
     useState(initialCitations)
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null)
+  const sentPromptRef = useRef(false)
 
   const { messages, sendMessage, status, error } = useChat({
     id: threadId,
@@ -54,24 +59,57 @@ export function ChatPane({
   const errorMessage = error ? formatChatError(error) : null
   const isBusy = status === 'submitted' || status === 'streaming'
 
+  // Auto-send a starter prompt handed off from the home screen (once).
+  useEffect(() => {
+    if (!pendingPrompt || sentPromptRef.current) return
+    if (messages.length > 0) {
+      sentPromptRef.current = true
+      onPromptConsumed?.()
+      return
+    }
+    if (status !== 'ready') return
+    sentPromptRef.current = true
+    void sendMessage({ text: pendingPrompt })
+    onPromptConsumed?.()
+  }, [pendingPrompt, status, messages.length, sendMessage, onPromptConsumed])
+
+  // Escape closes the source panel.
+  useEffect(() => {
+    if (!selectedCitation) return
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setSelectedCitation(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedCitation])
+
   function handleSelectCitation(citation: Citation) {
     setSelectedCitation((current) =>
       current?.id === citation.id ? null : citation,
     )
   }
 
+  function handleSubmit(text: string) {
+    setSelectedCitation(null)
+    void sendMessage({ text })
+  }
+
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="border-b border-border px-4 py-3">
-          <h2 className="truncate text-sm font-medium">{threadTitle}</h2>
+    <section className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-rule px-6 py-3">
+          <h1 className="truncate text-sm font-medium text-foreground">
+            {threadTitle}
+          </h1>
+          <span className="hidden shrink-0 text-[0.7rem] text-muted-foreground tabular sm:block">
+            10-K filings, FY2021–FY2025
+          </span>
         </header>
 
         {messages.length === 0 ? (
-          <EmptyState
-            title="Ask about the filings"
-            description="Ask about Apple, Amazon, Alphabet, Microsoft, and NVIDIA 10-Ks in the corpus. Answers cite retrieved filing passages — click a source chip to verify."
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+            <ResearchStart busy={isBusy} onSelectPrompt={handleSubmit} />
+          </div>
         ) : (
           <MessageList
             messages={messages}
@@ -82,18 +120,13 @@ export function ChatPane({
           />
         )}
 
-        <ChatStatusBar status={status} errorMessage={errorMessage} />
-
-        <ChatInput
-          disabled={isBusy}
-          onSubmit={(text) => {
-            setSelectedCitation(null)
-            void sendMessage({ text })
-          }}
-        />
+        <div className="shrink-0">
+          <RetrievalStatus status={status} errorMessage={errorMessage} />
+          <Composer disabled={isBusy} onSubmit={handleSubmit} />
+        </div>
       </div>
 
-      <SourcePassagePanel
+      <EvidencePanel
         citation={selectedCitation}
         onClose={() => setSelectedCitation(null)}
       />

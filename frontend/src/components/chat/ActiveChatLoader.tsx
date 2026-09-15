@@ -14,12 +14,16 @@ import { formatApiError } from '@/lib/errors'
 type ActiveChatLoaderProps = {
   threadId: string
   threadTitle: string
+  pendingPrompt?: string | null
+  onPromptConsumed?: () => void
   onThreadActivity?: () => void
 }
 
 export function ActiveChatLoader({
   threadId,
   threadTitle,
+  pendingPrompt,
+  onPromptConsumed,
   onThreadActivity,
 }: ActiveChatLoaderProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | null>(
@@ -61,19 +65,23 @@ export function ActiveChatLoader({
   if (initialMessages === null || initialCitations === null) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Loading messages…
+        Loading conversation…
       </div>
     )
   }
 
   return (
-    <ChatPane
-      key={threadId}
-      threadId={threadId}
-      threadTitle={threadTitle}
-      initialMessages={initialMessages}
-      initialCitations={initialCitations}
-      onThreadActivity={onThreadActivity}
-    />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <ChatPane
+        key={threadId}
+        threadId={threadId}
+        threadTitle={threadTitle}
+        initialMessages={initialMessages}
+        initialCitations={initialCitations}
+        pendingPrompt={pendingPrompt}
+        onPromptConsumed={onPromptConsumed}
+        onThreadActivity={onThreadActivity}
+      />
+    </div>
   )
 }
