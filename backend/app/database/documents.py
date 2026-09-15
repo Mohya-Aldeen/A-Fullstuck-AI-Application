@@ -1,4 +1,7 @@
-"""Typed Supabase helpers for source documents and retrieval chunks."""
+"""Typed Supabase helpers for source documents and chunk writes.
+
+Hybrid search (pgvector + Postgres full-text) lives in ``app.retrieval.queries``.
+"""
 
 from __future__ import annotations
 
@@ -253,4 +256,14 @@ async def count_source_documents(client: AsyncClient) -> int:
 
 async def count_chunks(client: AsyncClient) -> int:
     response = await client.table(_CHUNKS).select("id", count="exact", head=True).execute()
+    return int(response.count or 0)
+
+
+async def count_embedded_chunks_global(client: AsyncClient) -> int:
+    response = await (
+        client.table(_CHUNKS)
+        .select("id", count="exact", head=True)
+        .not_.is_("embedding", "null")
+        .execute()
+    )
     return int(response.count or 0)

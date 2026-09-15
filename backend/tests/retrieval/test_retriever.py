@@ -24,7 +24,10 @@ class FakeEmbeddings:
         self.calls.append(kwargs)
         return SimpleNamespace(
             data=[
-                SimpleNamespace(embedding=[0.0] * settings.OPENAI_EMBEDDING_DIMENSIONS)
+                SimpleNamespace(
+                    index=0,
+                    embedding=[0.0] * settings.OPENAI_EMBEDDING_DIMENSIONS,
+                )
             ]
         )
 

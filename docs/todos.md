@@ -8,17 +8,19 @@ Reference docs: [client-brief.md](./client-brief.md) · [architecture.md](./arch
 
 ## Current status (local dev)
 
-**Working end-to-end (stub assistant):** sign in → create thread → send message → stream stub reply → messages persist in Supabase.
+**Working end-to-end (grounded assistant):** sign in → create thread → send message → hybrid retrieval + PydanticAI answer → citations on reload.
 
 | Layer | Done | Not yet |
 | ----- | ---- | ------- |
-| **Backend** | `/health`, `/me`, full chat API (`/chat/threads`, `/chat/stream`), auth + RLS, `chats.py` helpers | Ingestion, retrieval, real agent, citations in stream, integration tests |
-| **Frontend** | Auth, chat UI, `useChat` → FastAPI, thread list, streaming, error states | Filing name in citation UI (needs chunk metadata from backend) |
-| **Data** | Schema migrated to Supabase | No SEC filings ingested — corpus empty |
+| **Backend** | `/health`, `/me`, chat API, auth + RLS, ingestion, hybrid retrieval, PydanticAI agent + grounding, citation persist | Live token streaming, chat integration tests |
+| **Frontend** | Auth, chat UI, `useChat` → FastAPI, thread list, streaming, Trust UI (citation chips + source panel) | Inline `[1]` markers in answer text (optional polish) |
+| **Data** | 25 filings, ~11.9k embedded chunks in Supabase; markdown + downloads on disk | Production re-ingest; richer page/section metadata |
 
-**Next recommended phase:** Phase 4 (ingestion) — requires OpenAI key + downloaded 10-K corpus. Until then, answers stay stub text.
+**Next recommended phase:** Phase 7 — live chat integration test, token streaming, optional citation SSE parts.
 
-**Verified locally:** `uv run pytest tests/chat` (7 unit tests) · `pnpm tsc --noEmit` · `pnpm lint` (warnings only).
+**Verified locally (automated):** `uv run python -m app.scripts.preflight` · `uv run pytest` (48 tests) · `pnpm tsc --noEmit` · `pnpm lint` (warnings only).
+
+**Manual gate before Phase 7:** browser sign-in → one client-brief question → stream completes → reload shows citations.
 
 ---
 
@@ -26,9 +28,9 @@ Reference docs: [client-brief.md](./client-brief.md) · [architecture.md](./arch
 
 - [x] Create Supabase project (Auth + Postgres) — see [guides/supabase-setup.md](./guides/supabase-setup.md)
 - [x] Copy `backend/.env.example` → `backend/.env` and fill in all values
-- [ ] Get OpenAI API key and add to `backend/.env`
-- [ ] Download sample corpus: `uv run data/download.py` (Apple, Amazon, Alphabet, Microsoft, NVIDIA 10-Ks 2021–2025)
-- [ ] Confirm `data/downloads/` has filing payloads before starting ingestion
+- [x] Get OpenAI API key and add to `backend/.env`
+- [x] Download sample corpus: `uv run data/download.py` (Apple, Amazon, Alphabet, Microsoft, NVIDIA 10-Ks 2021–2025)
+- [x] Confirm `data/downloads/` has filing payloads before starting ingestion
 
 ---
 
@@ -89,14 +91,14 @@ One-off **batch scripts** under `backend/ingest/` (not the chat agent). Goal: no
 
 **Full-text search (`search_vector`):** do **not** populate in ingest. Alembic defines `search_vector` as `GENERATED ALWAYS AS (to_tsvector('english', text)) STORED` — writing chunk `text` is enough; Postgres fills the tsvector for hybrid search in Phase 5.
 
-- [ ] Verify SEC download: `uv run data/download.py` → `data/downloads/` + `manifest.json` (25 filings)
-- [ ] HTML → Markdown: `uv run data/convert_to_markdown.py` → `data/markdown/` + `manifest.json` (Docling; same year layout)
-- [ ] Ingestion reads `data/markdown/` (preserve page/section metadata from Docling output where available)
-- [ ] Chunking strategy (size + overlap; store chunk index, page, section, ticker, filing type, year, accession number)
-- [ ] OpenAI embedding generation (`text-embedding-3-small`, 1536 dims)
-- [ ] Write `source_documents` + `document_chunks` (text + embedding; `search_vector` auto-generated)
-- [ ] Idempotent re-run (skip or upsert by accession number)
-- [ ] **Spot-check gate (required before Phase 5):** confirm chunks exist in Supabase and a known passage retrieves correctly — e.g. Apple revenue mix / segment table language from Q1 in [client-brief.md](./client-brief.md)
+- [x] Verify SEC download: `uv run data/download.py` → `data/downloads/` + `manifest.json` (25 filings)
+- [x] HTML → Markdown: `uv run data/convert_to_markdown.py` → `data/markdown/` + `manifest.json` (Docling; same year layout)
+- [x] Ingestion reads `data/markdown/` (preserve page/section metadata from Docling output where available)
+- [x] Chunking strategy (size + overlap; store chunk index, page, section, ticker, filing type, year, accession number)
+- [x] OpenAI embedding generation (`text-embedding-3-small`, 1536 dims)
+- [x] Write `source_documents` + `document_chunks` (text + embedding; `search_vector` auto-generated)
+- [x] Idempotent re-run (skip or upsert by accession number)
+- [x] **Spot-check gate (required before Phase 5):** confirm chunks exist in Supabase and a known passage retrieves correctly — e.g. Apple revenue mix / segment table language from Q1 in [client-brief.md](./client-brief.md)
 - [ ] Unit tests for chunking and metadata extraction
 
 ---
@@ -123,30 +125,34 @@ Hybrid search per [architecture.md § Retrieval Strategy](./architecture.md#retr
 
 Trust contract from [client-brief.md § What "trust" means](./client-brief.md#what-trust-means-here).
 
-- [ ] `assistant/outputs.py` — `GroundedAnswer`, `Citation`, `SourcePassage` Pydantic models
-- [ ] `assistant/deps.py` — `DocumentAgentDeps` (user, thread, retriever, validator)
-- [ ] `assistant/instructions.md` — system prompt encoding the product contract:
-  - [ ] Answer only from retrieved passages
-  - [ ] Cite every factual claim (filing + page)
-  - [ ] Say clearly when corpus lacks evidence — never invent facts
-  - [ ] No stock picks or investment advice
-- [ ] `assistant/agent.py` — PydanticAI agent with typed deps + output
-- [ ] `grounding/validator.py` — every citation maps to a retrieved passage; fail closed on mismatch
-- [ ] Unit tests for citation extraction and grounding enforcement
+- [x] `assistant/outputs.py` — `GroundedAnswer`, `Citation` (passages stay in `retrieval.models.SourcePassage`)
+- [x] `assistant/deps.py` — `DocumentAgentDeps` (user, thread, instrumented tools, registry, validator)
+- [x] `assistant/instructions.md` — system prompt encoding the product contract:
+  - [x] Answer only from retrieved passages
+  - [x] Cite every factual claim (filing + page)
+  - [x] Say clearly when corpus lacks evidence — never invent facts
+  - [x] No stock picks or investment advice
+- [x] `assistant/agent.py` — PydanticAI agent with retrieval tools + `GroundedAnswer` output
+- [x] `app/embeddings.py` — shared query/batch embeddings (retrieval + ingest)
+- [x] `OPENAI_CHAT_MODEL` / `ASSISTANT_MAX_TOOL_ROUNDS` in `app/config.py`
+- [x] `grounding/validator.py` — every citation maps to a retrieved passage; fail closed on mismatch
+- [x] `chat/orchestrator.py` — agent turn → validate → stream → persist `message_citations`
+- [x] Unit tests: grounding, assistant outputs/tools, orchestrator (mocked agent)
+- [x] **Preflight script:** `uv run python -m app.scripts.preflight` (env + migrations + corpus + retrieval smoke)
 
 ---
 
 ## Phase 7 — Chat API & streaming
 
 - [x] `chat/messages.py` — AI SDK UI message format ↔ internal types
-- [x] `chat/orchestrator.py` — stub turn (stream + persist; retrieve → agent → validate later)
+- [x] `chat/orchestrator.py` — full turn (agent → validate → stream → persist)
 - [x] `chat/streaming.py` — AI SDK-compatible streaming events (text deltas; citation parts later)
 - [x] `api/chat.py` routes:
   - [x] `GET /chat/threads` — list user's threads
   - [x] `POST /chat/threads` — create thread
   - [x] `GET /chat/threads/{id}/messages` — message history
-  - [x] `POST /chat/stream` — streaming assistant turn (stub reply until Phase 6)
-- [x] Persist user message + assistant message after successful stub run (citations + usage later)
+  - [x] `POST /chat/stream` — streaming grounded assistant turn
+- [x] Persist user message + assistant message after successful grounded run (citations persisted; usage metadata later)
 - [x] Error responses: 401, 403, 404, 422, 502 per architecture spec
 - [ ] Integration test (marked `@pytest.mark.integration`) against live Supabase + OpenAI
 
@@ -166,8 +172,13 @@ Trust contract from [client-brief.md § What "trust" means](./client-brief.md#wh
 - [x] Chat page: thread list, message history, streaming input
 - [x] Verify in the browser: New chat → send message → stub stream → reload shows history
 - [x] Vercel AI SDK `useChat` pointed at `POST /chat/stream` with Supabase token
-- [x] Citation UI — filing name, page, clickable source passage excerpt (excerpt + page for now; filing name when backend adds chunk metadata)
-- [x] Empty states, streaming status, friendly error messages (network vs HTTP)
+- [x] **Trust UI (citations & source passages):**
+  - [x] Citation chips on assistant messages (ticker, filing type, year, page/section via chunk + `source_documents` join)
+  - [x] Source passage panel — click a chip to show verbatim excerpt + SEC link
+  - [x] Empty states (no threads, no messages, thread not found)
+  - [x] Error states — session expired (401), access denied (403), retrieval/DB (502), network/CORS; grounding failure copy on assistant message
+  - [x] Loading/streaming status during assistant run
+  - [ ] Verify in browser: click citation → exact passage matches filing excerpt
 - [x] `pnpm tsc --noEmit` + `pnpm lint` clean
 
 ---

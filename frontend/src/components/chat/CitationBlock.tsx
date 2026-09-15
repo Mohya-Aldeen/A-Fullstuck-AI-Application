@@ -1,10 +1,18 @@
 import type { Citation } from '@/lib/chat'
+import { citationChipLabel } from '@/lib/citations'
+import { cn } from '@/lib/utils'
 
 type CitationBlockProps = {
   citations: Citation[]
+  selectedCitationId: string | null
+  onSelectCitation: (citation: Citation) => void
 }
 
-export function CitationBlock({ citations }: CitationBlockProps) {
+export function CitationBlock({
+  citations,
+  selectedCitationId,
+  onSelectCitation,
+}: CitationBlockProps) {
   if (citations.length === 0) return null
 
   const sorted = [...citations].sort(
@@ -14,33 +22,30 @@ export function CitationBlock({ citations }: CitationBlockProps) {
   return (
     <div className="mt-3 space-y-2 border-t border-border pt-3">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Sources
+        Sources — click to verify
       </p>
-      <ul className="space-y-2">
-        {sorted.map((citation) => (
-          <li
-            key={citation.id}
-            className="rounded-md border border-border bg-muted/40 p-3 text-sm"
-          >
-            <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">
-                Citation {citation.citation_index + 1}
-              </span>
-              {citation.page_label ? (
-                <span>Page {citation.page_label}</span>
-              ) : null}
-            </div>
-            {citation.excerpt ? (
-              <p className="whitespace-pre-wrap text-foreground/90">
-                {citation.excerpt}
-              </p>
-            ) : (
-              <p className="text-muted-foreground italic">
-                Source passage unavailable
-              </p>
-            )}
-          </li>
-        ))}
+      <ul className="flex flex-wrap gap-2">
+        {sorted.map((citation) => {
+          const selected = citation.id === selectedCitationId
+          return (
+            <li key={citation.id}>
+              <button
+                type="button"
+                onClick={() => onSelectCitation(citation)}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-left text-xs transition-colors',
+                  selected
+                    ? 'border-primary bg-primary/10 text-foreground'
+                    : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground',
+                )}
+                aria-pressed={selected}
+                title={citation.excerpt ?? undefined}
+              >
+                {citationChipLabel(citation)}
+              </button>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

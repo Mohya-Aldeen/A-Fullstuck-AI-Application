@@ -9,12 +9,24 @@ export type Thread = {
   updated_at: string
 }
 
+export type CitationSource = {
+  ticker: string | null
+  company_name: string | null
+  filing_type: string | null
+  filing_date: string | null
+  filing_year: number | null
+  section_label: string | null
+  source_url: string | null
+  accession_number: string | null
+}
+
 export type Citation = {
   id: string
   chunk_id: string
   citation_index: number
   excerpt: string | null
   page_label: string | null
+  source: CitationSource | null
 }
 
 export type StoredMessage = {

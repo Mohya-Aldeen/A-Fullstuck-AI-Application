@@ -7,12 +7,6 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic_ai.ui.vercel_ai.request_types import TextUIPart, UIMessage
 
-STUB_ASSISTANT_REPLY = (
-    "Document Copilot is connected. Retrieval and the grounded assistant are not wired yet — "
-    "this is a stub response from the backend."
-)
-
-
 class StreamChatRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -32,6 +26,16 @@ def extract_last_user_message(messages: list[UIMessage]) -> UIMessage | None:
         if message.role == "user":
             return message
     return None
+
+
+def stored_ui_message_text(ui_message: dict) -> str:
+    parts: list[str] = []
+    for part in ui_message.get("parts") or []:
+        if isinstance(part, dict) and part.get("type") == "text":
+            text = str(part.get("text", "")).strip()
+            if text:
+                parts.append(text)
+    return "\n".join(parts)
 
 
 def message_text(message: UIMessage) -> str:

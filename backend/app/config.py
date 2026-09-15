@@ -30,8 +30,10 @@ class Settings(BaseSettings):
 
     # --- OpenAI (LLM + embeddings) ---
     OPENAI_API_KEY: str
+    OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_DIMENSIONS: int = 1536
+    ASSISTANT_MAX_TOOL_ROUNDS: int = 8
     # Docling HybridChunker token budget (aligned to OpenAI embedding tokenizer).
     INGEST_CHUNK_MAX_TOKENS: int = 512
 

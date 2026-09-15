@@ -8,7 +8,7 @@ from uuid import UUID
 from openai import AsyncOpenAI
 from supabase import AsyncClient
 
-from app.config import settings
+from app.embeddings import embed_query
 from app.retrieval.fusion import DEFAULT_RRF_K, reciprocal_rank_fusion
 from app.retrieval.models import SearchFilters, SourcePassage, passage_from_chunk
 from app.retrieval.queries import (
@@ -46,24 +46,6 @@ class DocumentRetriever:
         self._candidate_count = candidate_count
         self._rrf_k = rrf_k
 
-    async def _embed_query(self, query: str) -> list[float]:
-        response = await self._openai_client.embeddings.create(
-            model=settings.OPENAI_EMBEDDING_MODEL,
-            input=[query],
-            dimensions=settings.OPENAI_EMBEDDING_DIMENSIONS,
-        )
-        if len(response.data) != 1:
-            raise RuntimeError(
-                f"Expected one query embedding, got {len(response.data)}"
-            )
-        embedding = response.data[0].embedding
-        if len(embedding) != settings.OPENAI_EMBEDDING_DIMENSIONS:
-            raise RuntimeError(
-                f"Query embedding has {len(embedding)} dimensions; "
-                f"expected {settings.OPENAI_EMBEDDING_DIMENSIONS}"
-            )
-        return embedding
-
     async def search(
         self,
         query: str,
@@ -85,7 +67,7 @@ class DocumentRetriever:
         ):
             raise ValueError("start_year must be less than or equal to end_year")
 
-        query_embedding = await self._embed_query(normalized_query)
+        query_embedding = await embed_query(self._openai_client, normalized_query)
         semantic, lexical = await asyncio.gather(
             semantic_search(
                 self._client,

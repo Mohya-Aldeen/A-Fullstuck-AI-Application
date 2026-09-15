@@ -30,12 +30,24 @@ class ThreadResponse(BaseModel):
     updated_at: str
 
 
+class CitationSourceResponse(BaseModel):
+    ticker: str | None = None
+    company_name: str | None = None
+    filing_type: str | None = None
+    filing_date: str | None = None
+    filing_year: int | None = None
+    section_label: str | None = None
+    source_url: str | None = None
+    accession_number: str | None = None
+
+
 class CitationResponse(BaseModel):
     id: UUID
     chunk_id: UUID
     citation_index: int
     excerpt: str | None
     page_label: str | None
+    source: CitationSourceResponse | None = None
 
 
 class MessageResponse(BaseModel):
@@ -74,6 +86,20 @@ def _message_response(record: chat_db.ChatMessageRecord) -> MessageResponse:
                 citation_index=citation.citation_index,
                 excerpt=citation.excerpt,
                 page_label=citation.page_label,
+                source=(
+                    CitationSourceResponse(
+                        ticker=citation.source.ticker,
+                        company_name=citation.source.company_name,
+                        filing_type=citation.source.filing_type,
+                        filing_date=citation.source.filing_date,
+                        filing_year=citation.source.filing_year,
+                        section_label=citation.source.section_label,
+                        source_url=citation.source.source_url,
+                        accession_number=citation.source.accession_number,
+                    )
+                    if citation.source is not None
+                    else None
+                ),
             )
             for citation in record.citations
         ],

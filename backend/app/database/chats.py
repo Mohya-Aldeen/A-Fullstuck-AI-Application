@@ -26,6 +26,18 @@ class ChatThreadRecord:
 
 
 @dataclass(frozen=True)
+class CitationSourceRecord:
+    ticker: str | None
+    company_name: str | None
+    filing_type: str | None
+    filing_date: str | None
+    filing_year: int | None
+    section_label: str | None
+    source_url: str | None
+    accession_number: str | None
+
+
+@dataclass(frozen=True)
 class MessageCitationRecord:
     id: UUID
     message_id: UUID
@@ -33,6 +45,7 @@ class MessageCitationRecord:
     citation_index: int
     excerpt: str | None
     page_label: str | None
+    source: CitationSourceRecord | None = None
 
 
 @dataclass(frozen=True)
@@ -66,14 +79,41 @@ def _thread_from_row(row: dict) -> ChatThreadRecord:
     )
 
 
+def citation_source_from_nested_row(row: dict) -> CitationSourceRecord | None:
+    chunk = row.get("document_chunks")
+    if not isinstance(chunk, dict):
+        return None
+    document = chunk.get("source_documents")
+    if not isinstance(document, dict):
+        return None
+    filing_year = document.get("filing_year")
+    return CitationSourceRecord(
+        ticker=document.get("ticker"),
+        company_name=document.get("company_name"),
+        filing_type=document.get("filing_type"),
+        filing_date=document.get("filing_date"),
+        filing_year=int(filing_year) if filing_year is not None else None,
+        section_label=chunk.get("section_label"),
+        source_url=document.get("source_url"),
+        accession_number=document.get("accession_number"),
+    )
+
+
 def _citation_from_row(row: dict) -> MessageCitationRecord:
+    page_label = row.get("page_label")
+    source = citation_source_from_nested_row(row)
+    if page_label is None and source is not None:
+        chunk = row.get("document_chunks")
+        if isinstance(chunk, dict) and chunk.get("page_label"):
+            page_label = chunk.get("page_label")
     return MessageCitationRecord(
         id=UUID(row["id"]),
         message_id=UUID(row["message_id"]),
         chunk_id=UUID(row["chunk_id"]),
         citation_index=row["citation_index"],
         excerpt=row.get("excerpt"),
-        page_label=row.get("page_label"),
+        page_label=page_label,
+        source=source,
     )
 
 
@@ -166,10 +206,18 @@ async def update_thread(
     return _thread_from_row(_one_row(response.data, what="chat thread"))
 
 
+_CITATION_SELECT = (
+    "id,message_id,chunk_id,citation_index,excerpt,page_label,"
+    "document_chunks(page_label,section_label,"
+    "source_documents(ticker,company_name,filing_type,filing_date,filing_year,source_url,accession_number))"
+)
+
 async def list_messages(client: AsyncClient, thread_id: UUID) -> list[ChatMessageRecord]:
     response = await (
         client.table(_MESSAGES)
-        .select("id,thread_id,role,ui_message,sequence,created_at,message_citations(*)")
+        .select(
+            f"id,thread_id,role,ui_message,sequence,created_at,message_citations({_CITATION_SELECT})"
+        )
         .eq("thread_id", str(thread_id))
         .order("sequence")
         .execute()

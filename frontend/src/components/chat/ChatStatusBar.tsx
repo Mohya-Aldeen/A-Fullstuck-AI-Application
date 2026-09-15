@@ -10,7 +10,7 @@ function statusLabel(status: ChatStatus): string | null {
     case 'submitted':
       return 'Sending…'
     case 'streaming':
-      return 'Assistant is responding…'
+      return 'Searching filings and drafting answer…'
     case 'ready':
     case 'error':
       return null
