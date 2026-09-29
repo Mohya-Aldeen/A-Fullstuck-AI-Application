@@ -1,0 +1,13 @@
+# Used when this directory is the Railway service root.
+# Dashboard: Settings → Source → Root Directory = frontend
+#
+# Railpack installs dependencies from pnpm-lock.yaml and runs `pnpm build`
+# because package.json defines a build script. `pnpm start` then serves dist/.
+
+[build]
+builder = "RAILPACK"
+
+[deploy]
+startCommand = "pnpm start"
+healthcheckPath = "/"
+healthcheckTimeout = 120

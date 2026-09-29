@@ -10,6 +10,8 @@ Full brief: [docs/client-brief.md](docs/client-brief.md)
 
 ## Stack
 
+Full inventory of languages, libraries, and services: [TOOLS.md](TOOLS.md).
+
 | Layer              | Choice                                               |
 | ------------------ | ---------------------------------------------------- |
 | Backend            | Python + FastAPI                                     |
@@ -23,13 +25,16 @@ Full brief: [docs/client-brief.md](docs/client-brief.md)
 
 ## Repo layout
 
+How each phase works, what it uses, and why it exists: [docs/phases/README.md](docs/phases/README.md).
+
 ```text
 document-copilot/
 ├── AGENTS.md           # agent instructions (read first)
 ├── README.md           # this file
 ├── data/               # local corpus + download script (payloads gitignored)
 ├── docs/
-│   └── client-brief.md # the client one-pager
+│   ├── client-brief.md # the client one-pager
+│   └── phases/         # one README per build phase
 ├── backend/            # FastAPI service
 └── frontend/           # React SPA (Vite)
 ```

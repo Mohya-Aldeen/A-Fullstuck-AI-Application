@@ -12,11 +12,12 @@ Reference docs: [client-brief.md](./client-brief.md) · [architecture.md](./arch
 
 | Layer | Done | Not yet |
 | ----- | ---- | ------- |
-| **Backend** | `/health`, `/me`, chat API, auth + RLS, ingestion, hybrid retrieval, PydanticAI agent + grounding, citation persist | Live token streaming, chat integration tests |
-| **Frontend** | Auth, chat UI, `useChat` → FastAPI, thread list, streaming, Trust UI (citation chips + source panel) | Inline `[1]` markers in answer text (optional polish) |
-| **Data** | 25 filings, ~11.9k embedded chunks in Supabase; markdown + downloads on disk | Production re-ingest; richer page/section metadata |
+| **Backend** | `/health`, `/me`, chat API, auth + RLS, ingestion, hybrid retrieval, PydanticAI agent + grounding, citation persist, token streaming, live chat integration test | — |
+| **Frontend** | Auth, chat UI, `useChat` → FastAPI, thread list, streaming, Trust UI (citation chips + source panel) | Browser check that a citation passage matches the filing |
+| **Data** | 25 filings ingested into the existing Supabase project | Re-ingest only if you create a new production database |
+| **Deploy** | Railway config in the repo (`railway.toml`, `serve.mjs`) | The two Railway services, created in your account |
 
-**Next recommended phase:** Phase 7 — live chat integration test, token streaming, optional citation SSE parts.
+**Next recommended phase:** Phase 9 — deploy the two Railway services, then run the Phase 10 pilot. Phases 1–8 are implemented. Phase 9's Railway config is in the repo; the services themselves are created in the Railway dashboard. Phase 10 is a week of analyst use, not more code. See [phases/README.md](./phases/README.md).
 
 **Verified locally (automated):** `uv run python -m app.scripts.preflight` · `uv run pytest` (48 tests) · `pnpm tsc --noEmit` · `pnpm lint` (warnings only).
 
@@ -42,9 +43,9 @@ Already scaffolded; verify locally before moving on.
 - [x] Alembic init (`alembic.ini`, `env.py`, `versions/`)
 - [x] SQLAlchemy `Base` in `app/database/base.py`
 - [x] `uv sync` + `uv run uvicorn app.main:app --reload` runs cleanly
-- [ ] `structlog` wired for structured request/error logging
+- [x] `structlog` wired for structured request/error logging
 - [x] pytest layout under `backend/tests/` (chat unit tests in `tests/chat/`)
-- [ ] `@pytest.mark.integration` convention + live Supabase/OpenAI integration tests
+- [x] `@pytest.mark.integration` convention + live Supabase/OpenAI integration tests
 
 ---
 
@@ -68,7 +69,7 @@ Tables from [architecture.md § Data Model](./architecture.md#data-model). Alemb
 - [x] `uv run python -m alembic upgrade head` succeeds against Supabase
 - [x] `app/database/supabase.py` — user-scoped and service-role client factories
 - [x] Typed query helpers: `app/database/chats.py` (explicit UUIDs on insert; service-role profile bootstrap)
-- [ ] Typed query helpers: `app/database/documents.py`
+- [x] Typed query helpers: `app/database/documents.py`
 
 ---
 
@@ -99,7 +100,7 @@ One-off **batch scripts** under `backend/ingest/` (not the chat agent). Goal: no
 - [x] Write `source_documents` + `document_chunks` (text + embedding; `search_vector` auto-generated)
 - [x] Idempotent re-run (skip or upsert by accession number)
 - [x] **Spot-check gate (required before Phase 5):** confirm chunks exist in Supabase and a known passage retrieves correctly — e.g. Apple revenue mix / segment table language from Q1 in [client-brief.md](./client-brief.md)
-- [ ] Unit tests for chunking and metadata extraction
+- [x] Unit tests for chunking and metadata extraction
 
 ---
 
@@ -154,7 +155,7 @@ Trust contract from [client-brief.md § What "trust" means](./client-brief.md#wh
   - [x] `POST /chat/stream` — streaming grounded assistant turn
 - [x] Persist user message + assistant message after successful grounded run (citations persisted; usage metadata later)
 - [x] Error responses: 401, 403, 404, 422, 502 per architecture spec
-- [ ] Integration test (marked `@pytest.mark.integration`) against live Supabase + OpenAI
+- [x] Integration test (marked `@pytest.mark.integration`) against live Supabase + OpenAI
 
 ---
 

@@ -8,8 +8,9 @@ export function createChatTransport() {
     api: `${env.apiBaseUrl}/chat/stream`,
     headers: async () => {
       const token = await getAccessToken()
-      if (!token) return {}
-      return { Authorization: `Bearer ${token}` }
+      const headers: Record<string, string> = {}
+      if (token) headers.Authorization = `Bearer ${token}`
+      return headers
     },
     prepareSendMessagesRequest: ({ id, messages }) => ({
       body: {

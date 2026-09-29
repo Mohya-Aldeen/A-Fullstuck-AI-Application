@@ -1,0 +1,12 @@
+# Used when this directory is the Railway service root.
+# Dashboard: Settings → Source → Root Directory = backend
+
+[build]
+builder = "RAILPACK"
+
+[deploy]
+# Apply schema changes before the new process accepts traffic.
+preDeployCommand = "uv run python -m alembic upgrade head"
+startCommand = "uv run python -m app.main"
+healthcheckPath = "/health"
+healthcheckTimeout = 120

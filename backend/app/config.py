@@ -38,8 +38,12 @@ class Settings(BaseSettings):
     INGEST_CHUNK_MAX_TOKENS: int = 512
 
     # --- Server ---
+    # Railway injects PORT. Local `python -m app.main` uses 8000 when it is unset.
+    PORT: int = 8000
     # Comma-separated in .env (see .env.example). Stored as str so pydantic-settings
     # does not try to JSON-decode the value before our split runs.
+    # Production must include the public frontend origin, for example
+    # https://your-frontend.up.railway.app
     ALLOWED_ORIGINS: str = "http://localhost:5173"
 
     @computed_field
