@@ -37,14 +37,15 @@ export function AnswerNote({
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
         <div>
           <p className="text-sm font-medium text-foreground">
-            Grounding check failed
+            Citations could not be verified
           </p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             {text}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            No citations were saved for this reply. Try a narrower or more
-            specific question.
+            The reply was blocked so an uncited claim would not reach you. Ask
+            the same question again, or pick a starter that names a company,
+            year, and metric from the 10-Ks.
           </p>
         </div>
       </div>

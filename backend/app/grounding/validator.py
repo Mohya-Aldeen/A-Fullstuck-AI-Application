@@ -17,8 +17,21 @@ class GroundingError(Exception):
         return self.reason
 
 
+# Filings and model output often disagree on quote glyphs; treat them as the same.
+_QUOTE_TRANSLATION = str.maketrans(
+    {
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u00a0": " ",
+    }
+)
+
+
 def _normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text.strip())
+    flattened = text.translate(_QUOTE_TRANSLATION)
+    return re.sub(r"\s+", " ", flattened.strip())
 
 
 class GroundingValidator:

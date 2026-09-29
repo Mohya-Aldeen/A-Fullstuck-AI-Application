@@ -67,6 +67,23 @@ def test_validator_rejects_citation_for_unretrieved_chunk() -> None:
         GroundingValidator().validate(answer, RetrievedPassageRegistry())
 
 
+def test_validator_treats_curly_quotes_as_straight() -> None:
+    chunk_id = UUID(int=31)
+    registry = RetrievedPassageRegistry()
+    registry.register(_passage(chunk_id, 'The company\u2019s iPhone net sales rose.'))
+    answer = GroundedAnswer(
+        answer="iPhone net sales rose [1].",
+        citations=[
+            Citation(
+                chunk_id=chunk_id,
+                citation_index=0,
+                excerpt="The company's iPhone net sales rose.",
+            )
+        ],
+    )
+    GroundingValidator().validate(answer, registry)
+
+
 def test_validator_rejects_non_verbatim_excerpt() -> None:
     chunk_id = UUID(int=3)
     registry = RetrievedPassageRegistry()

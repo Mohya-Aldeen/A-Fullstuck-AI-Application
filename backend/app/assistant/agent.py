@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
@@ -14,6 +14,7 @@ from app.assistant.deps import DocumentAgentDeps
 from app.assistant.history import format_prior_turns
 from app.assistant.outputs import GroundedAnswer
 from app.config import settings
+from app.grounding.validator import GroundingError
 from app.retrieval.models import SourcePassage
 
 _INSTRUCTIONS_PATH = Path(__file__).with_name("instructions.md")
@@ -51,6 +52,26 @@ document_agent = Agent(
     retries=2,
     defer_model_check=True,
 )
+
+
+def enforce_grounding(
+    ctx: RunContext[DocumentAgentDeps],
+    output: GroundedAnswer,
+) -> GroundedAnswer:
+    """Ask the model to retry if a citation is not a verbatim retrieved excerpt."""
+    try:
+        ctx.deps.validator.validate(output, ctx.deps.registry)
+    except GroundingError as exc:
+        raise ModelRetry(
+            "Grounding failed: "
+            f"{exc}. Copy citation excerpts as a contiguous substring of the "
+            "retrieved passage text. If the filings do not support the claim, "
+            "set insufficient_evidence=true and leave citations empty."
+        ) from exc
+    return output
+
+
+document_agent.output_validator(enforce_grounding)
 
 
 @document_agent.tool

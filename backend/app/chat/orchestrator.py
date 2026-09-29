@@ -127,7 +127,7 @@ async def run_turn(context: TurnContext, client: AsyncClient) -> AsyncIterator[s
         ):
             yield event
         return
-    except Exception as exc:
+    except Exception:
         log.exception("assistant_turn_failed", thread_id=str(context.thread_id))
         async for event in stream_assistant_text(
             _ASSISTANT_FAILURE_MESSAGE,

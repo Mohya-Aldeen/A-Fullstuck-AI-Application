@@ -10,7 +10,7 @@ type ComposerProps = {
 
 export function Composer({
   disabled = false,
-  placeholder = 'Ask about the filings…',
+  placeholder = 'Ask about a company, year, and metric in the 10-Ks…',
   onSubmit,
 }: ComposerProps) {
   const [text, setText] = useState('')
@@ -53,8 +53,8 @@ export function Composer({
           </Button>
         </div>
         <p className="mt-2 text-[0.7rem] text-muted-foreground">
-          Enter to send, Shift + Enter for a new line. Every answer cites the
-          filing passages behind it.
+          Name a company, year, and metric from the 10-Ks — for example Apple
+          Services revenue 2021–2025. Enter to send.
         </p>
       </div>
     </form>
