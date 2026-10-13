@@ -1,5 +1,6 @@
-# Used when this directory is the Railway service root.
-# Dashboard: Settings → Source → Root Directory = backend
+# Used when Railway's config-file path points here.
+# Root Directory must be backend/. Railpack also reads railpack.json and main.py
+# in this folder, because a monorepo often does not apply this file.
 
 [build]
 builder = "RAILPACK"

@@ -70,7 +70,7 @@ def test_validator_rejects_citation_for_unretrieved_chunk() -> None:
 def test_validator_treats_curly_quotes_as_straight() -> None:
     chunk_id = UUID(int=31)
     registry = RetrievedPassageRegistry()
-    registry.register(_passage(chunk_id, 'The company\u2019s iPhone net sales rose.'))
+    registry.register(_passage(chunk_id, "The company\u2019s iPhone net sales rose."))
     answer = GroundedAnswer(
         answer="iPhone net sales rose [1].",
         citations=[

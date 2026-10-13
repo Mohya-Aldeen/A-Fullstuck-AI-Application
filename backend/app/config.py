@@ -33,7 +33,9 @@ class Settings(BaseSettings):
     OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_DIMENSIONS: int = 1536
-    ASSISTANT_MAX_TOOL_ROUNDS: int = 8
+    # A multi-year comparison searches several filings and then reads table
+    # chunks. Eight tool calls aborts that turn before an answer is produced.
+    ASSISTANT_MAX_TOOL_ROUNDS: int = 24
     # Docling HybridChunker token budget (aligned to OpenAI embedding tokenizer).
     INGEST_CHUNK_MAX_TOKENS: int = 512
 

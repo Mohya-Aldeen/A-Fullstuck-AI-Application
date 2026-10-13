@@ -61,9 +61,7 @@ class GroundingValidator:
         seen_indices: set[int],
     ) -> None:
         if citation.citation_index in seen_indices:
-            raise GroundingError(
-                f"duplicate citation_index {citation.citation_index}"
-            )
+            raise GroundingError(f"duplicate citation_index {citation.citation_index}")
         seen_indices.add(citation.citation_index)
 
         passage = registry.get(citation.chunk_id)

@@ -6,7 +6,11 @@ from uuid import UUID
 import pytest
 from pydantic_ai import ModelRetry
 
-from app.assistant.agent import enforce_grounding, run_document_turn
+from app.assistant.agent import (
+    enforce_grounding,
+    read_surrounding_chunks,
+    run_document_turn,
+)
 from app.assistant.deps import DocumentAgentDeps
 from app.assistant.outputs import Citation, GroundedAnswer
 from app.assistant.registry import RetrievedPassageRegistry
@@ -88,6 +92,28 @@ def _deps_with_passage(text: str) -> DocumentAgentDeps:
         registry=registry,
         validator=GroundingValidator(),
     )
+
+
+def test_surrounding_tool_clamps_the_window() -> None:
+    seen: dict[str, int] = {}
+
+    class Tools:
+        async def read_surrounding_chunks(self, chunk_id: str, *, before: int, after: int):
+            del chunk_id
+            seen["before"] = before
+            seen["after"] = after
+            return []
+
+    result = asyncio.run(
+        read_surrounding_chunks(
+            SimpleNamespace(deps=SimpleNamespace(tools=Tools())),
+            "chunk",
+            before=9,
+            after=5,
+        )
+    )
+    assert result == []
+    assert seen == {"before": 2, "after": 2}
 
 
 def test_enforce_grounding_retries_when_excerpt_is_not_verbatim() -> None:

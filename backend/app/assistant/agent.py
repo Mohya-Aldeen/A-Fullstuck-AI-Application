@@ -14,8 +14,10 @@ from app.assistant.deps import DocumentAgentDeps
 from app.assistant.history import format_prior_turns
 from app.assistant.outputs import GroundedAnswer
 from app.config import settings
+from app.grounding.repair import example_cells, repair_answer
 from app.grounding.validator import GroundingError
 from app.retrieval.models import SourcePassage
+from app.retrieval.tools import MAX_SEARCH_RESULTS, MAX_SURROUNDING_CHUNKS
 
 _INSTRUCTIONS_PATH = Path(__file__).with_name("instructions.md")
 _INSTRUCTIONS = _INSTRUCTIONS_PATH.read_text(encoding="utf-8")
@@ -28,6 +30,10 @@ def _chat_model() -> OpenAIChatModel:
         model_name,
         provider=OpenAIProvider(api_key=settings.OPENAI_API_KEY),
     )
+
+
+def _bounded(value: int, *, low: int, high: int) -> int:
+    return min(max(value, low), high)
 
 
 def _passage_payload(passage: SourcePassage) -> dict[str, Any]:
@@ -59,16 +65,26 @@ def enforce_grounding(
     output: GroundedAnswer,
 ) -> GroundedAnswer:
     """Ask the model to retry if a citation is not a verbatim retrieved excerpt."""
+    repaired = repair_answer(output, ctx.deps.registry)
     try:
-        ctx.deps.validator.validate(output, ctx.deps.registry)
+        ctx.deps.validator.validate(repaired, ctx.deps.registry)
     except GroundingError as exc:
+        samples = example_cells(
+            ctx.deps.registry,
+            " ".join(citation.excerpt for citation in output.citations),
+        )
+        sample_hint = ""
+        if samples:
+            quoted = "; ".join(f'"{sample}"' for sample in samples)
+            sample_hint = f" Copy one of these cells exactly: {quoted}."
         raise ModelRetry(
             "Grounding failed: "
             f"{exc}. Copy citation excerpts as a contiguous substring of the "
-            "retrieved passage text. If the filings do not support the claim, "
+            "retrieved passage text. Do not use ellipses."
+            f"{sample_hint} If the filings do not support the claim, "
             "set insufficient_evidence=true and leave citations empty."
         ) from exc
-    return output
+    return repaired
 
 
 document_agent.output_validator(enforce_grounding)
@@ -85,14 +101,20 @@ async def search_filings(
     limit: int = 10,
 ) -> list[dict[str, Any]]:
     """Hybrid semantic + full-text search over ingested SEC filing chunks."""
-    passages = await ctx.deps.tools.search_filings(
-        query,
-        tickers=tickers,
-        filing_types=filing_types,
-        start_year=start_year,
-        end_year=end_year,
-        limit=limit,
-    )
+    # The model sometimes asks for more hits than the retriever allows. Clamp
+    # instead of failing the whole turn.
+    limit = _bounded(limit, low=1, high=MAX_SEARCH_RESULTS)
+    try:
+        passages = await ctx.deps.tools.search_filings(
+            query,
+            tickers=tickers,
+            filing_types=filing_types,
+            start_year=start_year,
+            end_year=end_year,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise ModelRetry(str(exc)) from exc
     return [_passage_payload(passage) for passage in passages]
 
 
@@ -102,7 +124,10 @@ async def read_chunk(
     chunk_id: str,
 ) -> dict[str, Any] | None:
     """Read one filing chunk by the chunk_id returned from search."""
-    passage = await ctx.deps.tools.read_chunk(chunk_id)
+    try:
+        passage = await ctx.deps.tools.read_chunk(chunk_id)
+    except ValueError as exc:
+        raise ModelRetry(str(exc)) from exc
     return _passage_payload(passage) if passage is not None else None
 
 
@@ -114,11 +139,16 @@ async def read_surrounding_chunks(
     after: int = 1,
 ) -> list[dict[str, Any]]:
     """Read ordered chunks before and after a chunk in the same filing."""
-    passages = await ctx.deps.tools.read_surrounding_chunks(
-        chunk_id,
-        before=before,
-        after=after,
-    )
+    before = _bounded(before, low=0, high=MAX_SURROUNDING_CHUNKS)
+    after = _bounded(after, low=0, high=MAX_SURROUNDING_CHUNKS)
+    try:
+        passages = await ctx.deps.tools.read_surrounding_chunks(
+            chunk_id,
+            before=before,
+            after=after,
+        )
+    except ValueError as exc:
+        raise ModelRetry(str(exc)) from exc
     return [_passage_payload(passage) for passage in passages]
 
 

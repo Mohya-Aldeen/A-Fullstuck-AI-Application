@@ -23,7 +23,7 @@ A confident wrong answer is a failure. Driftwood's business is being right.
 ## What one turn does
 
 1. Build deps (`app/assistant/deps.py`): the user, the thread, the retriever, a registry of passages actually retrieved, and the validator.
-2. The agent reads `app/assistant/instructions.md` and may call the Phase 5 tools, up to `ASSISTANT_MAX_TOOL_ROUNDS` (default 8).
+2. The agent reads `app/assistant/instructions.md` and may call the Phase 5 tools, up to `ASSISTANT_MAX_TOOL_ROUNDS` (default 24).
 3. It must return a `GroundedAnswer`, not free-form text the app then hopes is cited.
 4. The validator checks every citation against the registry. A mismatch fails closed: the user sees a failure message instead of an uncited claim.
 5. The orchestrator persists the user message, the assistant message, and `message_citations`.
